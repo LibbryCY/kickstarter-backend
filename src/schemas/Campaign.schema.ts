@@ -12,8 +12,8 @@ export class Campaign {
   @Prop({ required: true })
   creator: string;
 
-  @Prop({ required: true ,min:0})
-  threshold: number;
+  @Prop({ required: true })
+  threshold: string;
 
   @Prop({ required: true })
   balance: number;
