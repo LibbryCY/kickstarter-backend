@@ -209,19 +209,6 @@ export const ABI =
 		"inputs": [
 			{
 				"internalType": "uint256",
-				"name": "_campaignId",
-				"type": "uint256"
-			}
-		],
-		"name": "closeCampaign",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
 				"name": "minEthThreshold",
 				"type": "uint256"
 			},
@@ -232,6 +219,19 @@ export const ABI =
 			}
 		],
 		"name": "createCampaign",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_campaignId",
+				"type": "uint256"
+			}
+		],
+		"name": "creatorOnlyCloseCampaign",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -300,6 +300,19 @@ export const ABI =
 				"internalType": "struct Campaign",
 				"name": "",
 				"type": "tuple"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getFundsToClaim",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
 			}
 		],
 		"stateMutability": "view",

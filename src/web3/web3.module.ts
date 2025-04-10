@@ -4,12 +4,13 @@ import { Web3Service } from './web3.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Campaign, CampaignSchema } from 'src/schemas/Campaign.schema';
 import { CampaignModule } from 'src/campaign/campaign.module';
+import { EventListenerService } from './event-listener.service';
 
 @Module({
   imports: [
    CampaignModule
   ],
   controllers: [Web3Controller],
-  providers: [Web3Service]
+  providers: [EventListenerService]
 })
 export class Web3Module {}

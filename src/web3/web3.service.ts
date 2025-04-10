@@ -1,149 +1,145 @@
+
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ethers, JsonRpcProvider } from 'ethers';
 import * as dotenv from 'dotenv';
-import { Campaign, CampaignDocument, CampaignSchema } from 'src/schemas/Campaign.schema';
+import { Campaign, CampaignDocument } from 'src/schemas/Campaign.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import {ABI} from "../common/abi";
-import {updateLastProcessedBlock,getLastProcessedBlock} from "../common/utils";
-
+import { ABI } from '../common/abi';
+import { updateLastProcessedBlock, getLastProcessedBlock } from '../common/utils';
 
 dotenv.config();
-const privateKey = process.env.PRIVATE_KEY || 'ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
-const rpcUrl = process.env.RPC_URL || 'http://127.0.0.1:8545';
-const contractAddress = process.env.CONTRACT_ADDRESS || '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512';
-
+const privateKey = process.env.PRIVATE_KEY || '';
+const rpcUrl = process.env.RPC_URL || '';
+const contractAddress = process.env.CONTRACT_ADDRESS || '';
 
 @Injectable()
-export class Web3Service  implements OnModuleInit {
- 
-  private provider: JsonRpcProvider;
-  private wallet: ethers.Wallet;
-  private contract: ethers.Contract;
+ export class Web3Service implements OnModuleInit {
+  onModuleInit() {
+    throw new Error('Method not implemented.');
+  }
+//   private provider: JsonRpcProvider;
+//   private contract: ethers.Contract;
+//   private contractAbi = ABI;
 
-    private contractAbi = ABI;
-   
-    constructor(
-        @InjectModel(Campaign.name) private campaignModel: Model<CampaignDocument>
-    ) {
-        console.log('RPC URL:', rpcUrl);
-        console.log('Contract Address:', contractAddress);
+//   constructor(
+//     @InjectModel(Campaign.name) private campaignModel: Model<CampaignDocument>
+//   ) {
+//     this.provider = new ethers.JsonRpcProvider(rpcUrl);
+//     this.contract = new ethers.Contract(contractAddress, this.contractAbi, this.provider);
+//   }
 
-        this.provider = new ethers.JsonRpcProvider(rpcUrl);
-        this.wallet = new ethers.Wallet(privateKey, this.provider);
-        this.contract = new ethers.Contract(contractAddress, this.contractAbi, this.provider);
+//   async onModuleInit() {
+//     await this.listenToEvents();
+//   }
 
-        //this.listenToEvents();
-      }
-    async onModuleInit() {
-      await this.listenToEvents();
-    }
+//   async listenToEvents() {
+//     let lastProcessedBlock = getLastProcessedBlock();
+//     const pollingInterval = 10000; // 10 seconds
+//     const batchSize = 1000;
 
-    async listenToEvents() {
-      const filter = {};         // this.contract.filters.CampaignCreated();
-      let lastProcessedBlock = getLastProcessedBlock(); 
-  
-      // Polling every 10 seconds for new events
-      setInterval(async () => {
-        try {
-         const latestBlock = await this.provider.getBlockNumber();
- 
-          // Ako već imamo najnoviji blok, nema potrebe za novim upitom
-         if (latestBlock <= lastProcessedBlock) return;
- 
-         const logs = await this.provider.getLogs({
-           ...filter,
-           fromBlock: lastProcessedBlock+1,
-           toBlock: 'latest',
-         });
-         if (logs.length > 0) {
-           logs.forEach(async (log) => {
-             const parsedLog = this.contract.interface.parseLog(log);
-             if (!parsedLog) {
-               console.error('Failed to parse log:', log);
-               return; 
-             }
-             const event = parsedLog.args;
-             console.log(`Event found: ${parsedLog.name} in block ${log.blockNumber}`);
+//     setInterval(async () => {
+//       try {
+//         const latestBlock = await this.provider.getBlockNumber();
+//         if (latestBlock <= lastProcessedBlock) return;
 
+//         let fromBlock = lastProcessedBlock + 1;
 
-             // Switch to choose which event was emited
-             if (parsedLog.name === "Voted") {
-              console.log(`Vote: Voter = ${event.voter}, Campaign ID = ${event.campaignId}, value = ${event.amount}`);
-              const existingCampaign = await this.campaignModel.findOne({ id: Number(event.campaignId) });
-              if (existingCampaign) {
-                await this.campaignModel.findOneAndUpdate(
-                  { id: Number(event.campaignId) },
-                  { $inc: { balance: Number(event.amount), numberOfVotes: 1 } }
-                );
-              }
-    
-            }
-   
-            if(parsedLog.name == "CampaignCreated"){
-              const existingCampaign = await this.campaignModel.findOne({ id: Number(event.campaignId) });
+//         while (fromBlock <= latestBlock) {
+//           const toBlock = Math.min(fromBlock + batchSize - 1, latestBlock);
 
-               if (!existingCampaign) {
-                 const newCampaign = new this.campaignModel({
-                   id: Number(event.campaignId),
-                   creator: String(event.creator),
-                   threshold: String(event.threshold), // to convert from wei to ether
-                   balance: 0,
-                   beneficiary: event.beneficiary, 
-                   numberOfVotes: 0,
-                   closed: false,
-                 });
-     
-                 await newCampaign.save();
-               }
-            }    
+//           const logs = await this.provider.getLogs({
+//             address: contractAddress,
+//             fromBlock,
+//             toBlock,
+//           });
 
-            if(parsedLog.name=="Unvoted"){
-              console.log(`Unvote: Voter = ${event.voter}, Campaign ID = ${event.campaignId}, value = ${event.amount}`);
+//           for (const log of logs) {
+//             try {
+//               const parsedLog = this.contract.interface.parseLog(log);
+//               const event = parsedLog?.args;
+//               const name = parsedLog?.name;
 
-              const existingCampaign = await this.campaignModel.findOne({ id: Number(event.campaignId) });
-              if (existingCampaign) {
-                await this.campaignModel.findOneAndUpdate(
-                  { id: Number(event.campaignId) },
-                  { $inc: { balance: -Number(event.amount), numberOfVotes: -1 } }
-                );
-              }
-            }
+//               console.log(`Parsed event: ${name} in block ${log.blockNumber}`);
 
-            if(parsedLog.name=="CampaignClosed"){
-              console.log(`Campaign Closed: ID = ${event.campaignId}, amount transferred = ${event.amountTransferred}`);
-              const existingCampaign = await this.campaignModel.findOne({ id: Number(event.campaignId) });
-              if (existingCampaign) {
-                await this.campaignModel.findOneAndUpdate(
-                  { id: Number(event.campaignId) },
-                  { closed: true, numberOfVotes: 0 },
-                  { $dec: { balance: Number(event.amountTransferred) } },
-                  
-                );
-              }
-            }
+//               switch (name) {
+//                 case 'CampaignCreated':
+//                   await this.handleCampaignCreated(event);
+//                   break;
+//                 case 'Voted':
+//                   await this.handleVoted(event);
+//                   break;
+//                 case 'Unvoted':
+//                   await this.handleUnvoted(event);
+//                   break;
+//                 case 'CampaignClosed':
+//                   await this.handleCampaignClosed(event);
+//                   break;
+//                 case 'FundsClaimed':
+//                   await this.handleFundsClaimed(event);
+//                   break;
+//               }
 
-            if(parsedLog.name=="FundsClaimed"){
-              console.log(`Funds Claimed: amount = ${event.fundsToClaim}`);
-              await this.campaignModel.findOneAndUpdate(
-                { closed: true },
-                { balance: 0 }
-              );
-              
-            }
-            
-            // Update last processed block
-            lastProcessedBlock = log.blockNumber;
-            await updateLastProcessedBlock(lastProcessedBlock);
-           });
-         }
-        } catch (error) {
-          console.error('Error fetching logs:', error);
-        }
-      }, 10000); // Poll every 10 seconds
-    }
+//               lastProcessedBlock = log.blockNumber;
+//               await updateLastProcessedBlock(lastProcessedBlock);
+//             } catch (err) {
+//               console.error('Failed to parse or handle log:', err);
+//             }
+//           }
 
+//           fromBlock = toBlock + 1;
+//         }
+//       } catch (error) {
+//         console.error('Error fetching logs:', error);
+//       }
+//     }, pollingInterval);
+  }
 
-}
+//   private async handleCampaignCreated(event: any) {
+//     const exists = await this.campaignModel.findOne({ id: Number(event.campaignId) });
+//     if (!exists) {
+//       const newCampaign = new this.campaignModel({
+//         id: Number(event.campaignId),
+//         creator: String(event.creator),
+//         threshold: String(event.threshold),
+//         balance: 0,
+//         beneficiary: event.beneficiary,
+//         numberOfVotes: 0,
+//         closed: false,
+//       });
+//       await newCampaign.save();
+//     }
+//   }
 
+//   private async handleVoted(event: any) {
+//     await this.campaignModel.findOneAndUpdate(
+//       { id: Number(event.campaignId) },
+//       { $inc: { balance: Number(event.amount), numberOfVotes: 1 } }
+//     );
+//   }
 
+//   private async handleUnvoted(event: any) {
+//     await this.campaignModel.findOneAndUpdate(
+//       { id: Number(event.campaignId) },
+//       { $inc: { balance: -Number(event.amount), numberOfVotes: -1 } }
+//     );
+//   }
+
+//   private async handleCampaignClosed(event: any) {
+//     await this.campaignModel.findOneAndUpdate(
+//       { id: Number(event.campaignId) },
+//       {
+//         closed: true,
+//         numberOfVotes: 0,
+//         $inc: { balance: -Number(event.amountTransferred) },
+//       }
+//     );
+//   }
+
+//   private async handleFundsClaimed(event: any) {
+//     await this.campaignModel.updateMany(
+//       { closed: true },
+//       { $set: { balance: 0 } }
+//     );
+//   }
+// }
