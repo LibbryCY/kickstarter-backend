@@ -13,7 +13,7 @@ export class CleanupService implements OnModuleInit {
     // On every hour (3600000 ms)
     setInterval(() => {
       this.cleanupClosedCampaigns();
-    }, 60 * 1000); // 1 h
+    }, 60* 60 * 1000); // 1 h
   }
 
   async cleanupClosedCampaigns() {
