@@ -79,7 +79,7 @@ export class EventListenerService implements OnModuleInit {
         if (existingCampaign) {
           await this.campaignModel.findOneAndUpdate(
             { id: Number(campaignId) },
-            { closed: true, numberOfVotes: 0,balance: (existingCampaign.balance>Number(existingCampaign.threshold))?0:existingCampaign.balance  },            
+            { closed: true, numberOfVotes: 0,balance: (existingCampaign.balance>=Number(existingCampaign.threshold))?0:existingCampaign.balance  },            
           );
         }
     });
